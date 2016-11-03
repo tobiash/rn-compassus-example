@@ -14,6 +14,7 @@
 (def view (partial create-element (.-View ReactNative)))
 (def text (partial create-element (.-Text ReactNative)))
 (def image (partial create-element (.-Image ReactNative)))
+(def navigator (partial create-element (.-Navigator ReactNative)))
 (def touchable-highlight (partial create-element (.-TouchableHighlight ReactNative)))
 
 (def logo-img (js/require "./images/cljs.png"))
@@ -21,25 +22,18 @@
 (defn alert [title]
       (.alert (.-Alert ReactNative) title))
 
-(defui AppRoot
-       static om/IQuery
-       (query [this]
-              '[:app/msg])
-       Object
-       (render [this]
-               (let [{:keys [app/msg]} (om/props this)]
-                    (view {:style {:flexDirection "column" :margin 40 :alignItems "center"}}
-                          (text {:style {:fontSize 30 :fontWeight "100" :marginBottom 20 :textAlign "center"}} msg)
-                          (image {:source logo-img
-                                  :style  {:width 80 :height 80 :marginBottom 30}})
-                          (touchable-highlight {:style   {:backgroundColor "#999" :padding 10 :borderRadius 5}
-                                                :onPress #(alert "HELLO!")}
-                                               (text {:style {:color "white" :textAlign "center" :fontWeight "bold"}} "press me"))))))
+(defn route->js [route] (clj->js {:name (name route) :ns (namespace route)}))
+
+(defn js->route [js]
+  (let [obj (js->clj js :keywordize-keys true)
+        rns (:ns obj)
+        rn (:name obj)]
+    (keyword rns rn)))
 
 (defn route-button
-  [this route name color]
+  [navigator route name color]
   (touchable-highlight {:style {:backgroundColor color :padding 10 :borderRadius 5}
-                        :onPress #(compassus/set-route! this route)}
+                        :onPress #(.push navigator (route->js route))}
                        (text {:style {:color "white" :fontWeight "bold"}} name)))
 
 
@@ -48,14 +42,28 @@
   (render [this]
     (let [{:keys [owner factory props]} (om/props this)
           route (compassus/current-route this)]
-      (view {:style {:flexDirection "column" :alignItems "stretch"}}
-        (text {:style {:fontSize 30 :fontWeight "100" :textAlign "center"}} "Compassus Demo")
-        (text nil (str "Current Route is " (pr-str (compassus/current-route this))))
-        (view {:style {:flexDirection "row" :justifyContent "space-around"}}
-            (route-button this :a "A" "green")
-            (route-button this :b "B" "blue")
-            (route-button this :c "C" "orange"))
-        (factory props)))))
+      (navigator
+       {:initialRoute (route->js route)
+        :configureScene
+          (fn [_ _] ReactNative.Navigator.SceneConfigs.FloatFromBottomAndroid)
+        :onWillFocus
+          (fn [ js-route]
+            (let [focused-route (js->route js-route)]
+              (if-not (= route focused-route)
+                (compassus/set-route! this focused-route))))
+        :renderScene
+          (fn [_ navigator]
+            (view {:style {:flexDirection "column"
+                           :alignItems "stretch"
+                           :flex 1
+                           :backgroundColor "white"}}
+              (text {:style {:fontSize 30 :fontWeight "100" :textAlign "center"}} "Compassus Demo")
+              (text nil (str "Current Route is " (pr-str (compassus/current-route this))))
+              (view {:style {:flexDirection "row" :justifyContent "space-around"}}
+                  (route-button navigator :a "A" "green")
+                  (route-button navigator :b "B" "blue")
+                  (route-button navigator :c "C" "orange"))
+              (factory props)))}))))
 
 
 (defui A
