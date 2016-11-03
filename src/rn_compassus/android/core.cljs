@@ -1,6 +1,7 @@
 (ns rn-compassus.android.core
   (:require [om.next :as om :refer-macros [defui]]
             [re-natal.support :as sup]
+            [compassus.core :as compassus]
             [rn-compassus.state :as state]))
 
 (set! js/window.React (js/require "react"))
@@ -35,9 +36,53 @@
                                                 :onPress #(alert "HELLO!")}
                                                (text {:style {:color "white" :textAlign "center" :fontWeight "bold"}} "press me"))))))
 
+(defn route-button
+  [this route name color]
+  (touchable-highlight {:style {:backgroundColor color :padding 10 :borderRadius 5}
+                        :onPress #(compassus/set-route! this route)}
+                       (text {:style {:color "white" :fontWeight "bold"}} name)))
+
+
+(defui Wrapper
+  Object
+  (render [this]
+    (let [{:keys [owner factory props]} (om/props this)
+          route (compassus/current-route this)]
+      (view {:style {:flexDirection "column" :alignItems "stretch"}}
+        (text {:style {:fontSize 30 :fontWeight "100" :textAlign "center"}} "Compassus Demo")
+        (text nil (str "Current Route is " (pr-str (compassus/current-route this))))
+        (view {:style {:flexDirection "row" :justifyContent "space-around"}}
+            (route-button this :a "A" "green")
+            (route-button this :b "B" "blue")
+            (route-button this :c "C" "orange"))
+        (factory props)))))
+
+
+(defui A
+  Object
+  (render [this]
+          (text {:style {:fontSize 30}} "Screen A")))
+
+(defui B
+  Object
+  (render [this]
+          (text {:style {:fontSize 30}} "Screen B")))
+
+(defui C
+  Object
+  (render [this]
+          (text {:style {:fontSize 30}} "Screen C")))
+
 (defonce RootNode (sup/root-node! 1))
 (defonce app-root (om/factory RootNode))
 
+(def app
+  (compassus/application
+   {:routes {:a A :b B :c C}
+    :index-route :a
+    :reconciler state/reconciler
+    :mixins [(compassus/wrap-render Wrapper)]}))
+
 (defn init []
-      (om/add-root! state/reconciler AppRoot 1)
+      (compassus/mount! app 1)
       (.registerComponent app-registry "RnCompassus" (fn [] app-root)))

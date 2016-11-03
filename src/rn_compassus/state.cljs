@@ -1,5 +1,6 @@
 (ns rn-compassus.state
   (:require [om.next :as om]
+            [compassus.core :as compassus]
             [re-natal.support :as sup]))
 
 (defonce app-state (atom {:app/msg "Hello Clojure in iOS and Android!"}))
@@ -15,6 +16,6 @@
 (defonce reconciler
          (om/reconciler
            {:state        app-state
-            :parser       (om/parser {:read read})
+            :parser       (compassus/parser {:read read})
             :root-render  sup/root-render
             :root-unmount sup/root-unmount}))
